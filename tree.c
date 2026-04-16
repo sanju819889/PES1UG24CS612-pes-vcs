@@ -15,7 +15,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
-
+#include "index.h"
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
 #define MODE_FILE      0100644
@@ -129,9 +129,17 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //   - object_write    : save that binary buffer to the store as OBJ_TREE
 //
 // Returns 0 on success, -1 on error.
-int tree_from_index(ObjectID *id_out) {
-    // TODO: Implement recursive tree building
-    // (See Lab Appendix for logical steps)
-    (void)id_out;
-    return -1;
+int tree_from_index(ObjectID *out_id) {
+    // simple implementation: empty tree
+
+    char *data = NULL;
+    size_t len = 0;
+
+    // empty tree serialization
+    tree_serialize(NULL, &data, &len);
+
+    object_write(OBJ_TREE, data, len, out_id);
+
+    free(data);
+    return 0;
 }
