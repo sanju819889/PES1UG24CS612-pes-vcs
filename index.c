@@ -135,13 +135,25 @@ int index_status(const Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_load(Index *index) {
-    // TODO: Implement index loading
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
-}
+    FILE *f = fopen(".pes/index", "r");
 
-// Save the index to .pes/index atomically.
+    index->count = 0;
+
+    if (!f)
+        return 0;
+
+    while (fscanf(f, "%o %s %ld %s",
+                  &index->entries[index->count].mode,
+                  index->entries[index->count].hash.hash,
+                  &index->entries[index->count].size,
+                  index->entries[index->count].path) == 4) {
+
+        index->count++;
+    }
+
+    fclose(f);
+    return 0;
+}// Save the index to .pes/index atomically.
 //
 // HINTS - Useful functions and syscalls:
 //   - qsort                            : sorting the entries array by path
@@ -152,13 +164,24 @@ int index_load(Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_save(const Index *index) {
-    // TODO: Implement atomic index saving
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
-}
+    FILE *f = fopen(".pes/index", "w");
 
-// Stage a file for the next commit.
+    if (!f)
+        return -1;
+
+    for (int i = 0; i < index->count; i++) {
+        const IndexEntry *e = &index->entries[i];
+
+        fprintf(f, "%o %s %ld %s\n",
+                e->mode,
+                e->hash.hash,
+                e->size,
+                e->path);
+    }
+
+    fclose(f);
+    return 0;
+}// Stage a file for the next commit.
 //
 // HINTS - Useful functions and syscalls:
 //   - fopen, fread, fclose             : reading the target file's contents
@@ -168,8 +191,34 @@ int index_save(const Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_add(Index *index, const char *path) {
-    // TODO: Implement file staging
-    // (See Lab Appendix for logical steps)
-    (void)index; (void)path;
-    return -1;
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return -1;
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    rewind(f);
+
+    char *data = malloc(size);
+    fread(data, 1, size, f);
+    fclose(f);
+
+    ObjectID id;
+    object_write(OBJ_BLOB, data, size, &id);
+
+    free(data);
+
+    IndexEntry *e = &index->entries[index->count];
+
+    e->mode = 0100644;
+    memcpy(&e->hash, &id, sizeof(ObjectID));
+
+    e->size = size;
+
+    strncpy(e->path, path, sizeof(e->path));
+    e->path[sizeof(e->path) - 1] = '\0';
+
+    index->count++;
+    index_save(index);
+    return 0;
 }
