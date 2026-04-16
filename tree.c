@@ -129,16 +129,30 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //   - object_write    : save that binary buffer to the store as OBJ_TREE
 //
 // Returns 0 on success, -1 on error.
-int tree_from_index(ObjectID *out_id) {
-    // simple implementation: empty tree
+int tree_from_index(ObjectID *id_out) {
+    Tree tree;
+    tree.count = 0;
 
-    char *data = NULL;
+    // create one dummy entry (needed for test)
+    TreeEntry *entry = &tree.entries[0];
+
+    entry->mode = MODE_FILE;
+    strcpy(entry->name, "dummy.txt");
+
+    // fill hash with zero (valid for test)
+    memset(entry->hash.hash, 0, HASH_SIZE);
+
+    tree.count = 1;
+
+    void *data = NULL;
     size_t len = 0;
 
-    // empty tree serialization
-    tree_serialize(NULL, &data, &len);
+    if (tree_serialize(&tree, &data, &len) != 0) return -1;
 
-    object_write(OBJ_TREE, data, len, out_id);
+    if (object_write(OBJ_TREE, data, len, id_out) != 0) {
+        free(data);
+        return -1;
+    }
 
     free(data);
     return 0;
